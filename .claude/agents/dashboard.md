@@ -9,6 +9,7 @@ tools:
   - Bash
   - Grep
 model: sonnet
+maxTurns: 15
 ---
 
 You are the **dashboard agent**. Build a lightweight web UI showing

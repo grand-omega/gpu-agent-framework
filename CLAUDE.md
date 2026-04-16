@@ -49,34 +49,39 @@ This project uses Claude Code Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
 
 ### Slash commands
 
-- `/cycle <task>` — full plan → code → analyze cycle with three agents
+- `/cycle <task>` — full plan → code → analyze → commit cycle
 - `/research <topic>` — parallel research from multiple angles
 
 ### Agent roles and boundaries
 
-| Agent | Reads | Writes | Model |
-|-------|-------|--------|-------|
-| Planner | feedback-log, codebase, web | docs/plans/, task-list.json | opus |
-| Coder | plans, task-list | src/, tests/, task-list.json | opus |
-| Analyst | plans, code diffs, test results | docs/analysis/, feedback-log.json | sonnet |
-| Git Ops | everything | git operations | sonnet |
-| LaTeX | analysis, plans | docs/reports/ | sonnet |
-| Dashboard | task-list, analysis | web UI files | sonnet |
+| Agent | Reads | Writes | Model | maxTurns |
+|-------|-------|--------|-------|----------|
+| Planner | feedback-log, codebase, web | docs/plans/ | opus | 30 |
+| Coder | plans, tasks | src/, tests/ | opus | 50 |
+| Analyst | plans, code diffs, test results | docs/analysis/, feedback-log.json | sonnet | 20 |
+| Git Ops | everything | git operations | sonnet | 15 |
+| LaTeX | analysis, plans | docs/reports/ | sonnet | 20 |
+| Dashboard | tasks, analysis | web UI files | sonnet | 15 |
 
 Each agent owns its directories — no cross-writing.
 
 ### Coordination flow
 
 ```
-Planner ──plan──→ Coder ──code──→ Analyst
-   ↑                                  │
-   └──────── feedback-log.json ───────┘
+Planner ──plan──→ Coder ←──fixes──→ Analyst ──approve──→ Git Ops
+   ↑                                    │
+   └──────── feedback-log.json ─────────┘
 ```
 
-### Shared state files
+The analyst can request up to 2 rounds of revisions from the coder
+before the cycle completes. After analyst approval, git-ops commits.
 
-- `agents/shared-state/task-list.json` — task tracking between planner and coder
-- `agents/shared-state/feedback-log.json` — analyst → planner feedback loop
+### Task coordination
+
+- Use the **built-in task system** (TaskCreate/TaskUpdate/TaskList) for
+  cross-agent coordination — not hand-rolled JSON files
+- Teammates message each other directly via SendMessage for handoffs
+- `agents/shared-state/feedback-log.json` — analyst → planner feedback loop (persists across cycles)
 
 ## Directory layout
 

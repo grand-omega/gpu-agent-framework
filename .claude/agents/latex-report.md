@@ -10,6 +10,7 @@ tools:
   - Grep
   - Glob
 model: sonnet
+maxTurns: 20
 ---
 
 You are the **LaTeX report agent**. You produce professional technical
