@@ -1,84 +1,77 @@
 ---
 description: Start a full plan-code-analyze cycle with agent teams
-allowed-tools: Agent, SendMessage, TaskCreate, TaskGet, TaskList, TaskUpdate
+allowed-tools: Agent, TeamCreate, TeamDelete, SendMessage, TaskCreate, TaskGet, TaskList, TaskUpdate
 ---
 
 # Full development cycle: $ARGUMENTS
 
-Run a plan → code → analyze → commit cycle using agent teams.
-
 > **$ARGUMENTS**
 
-## Phase 1: Planning
+## Step 1: Create the team and tasks
 
-Spawn a **planner** teammate to:
-- Research the topic (web search if needed)
-- Read `agents/shared-state/feedback-log.json` for past lessons
-- Write plan to `docs/plans/`
-- List any `uv add` commands needed
-- Create tasks via TaskCreate (NOT via task-list.json)
-- Message you when the plan is ready
+Call `TeamCreate` with team_name `"cycle"`.
 
-Wait for the planner to signal "plan complete" before proceeding.
+Then create these four tasks with dependencies:
 
-## Phase 2: Implementation
+1. **TaskCreate**: "Plan: $ARGUMENTS"
+   - Description: Research the topic, write plan to docs/plans/, create implementation subtasks
+   - No blockers
 
-Spawn a **coder** teammate to:
-- Read the plan from `docs/plans/`
-- Run `uv add` commands from the plan
-- Pick up tasks and implement them (update task status as they go)
-- Run `uv run pytest` after each change
-- Run the completion checklist before signaling done
-- Message you when all tasks are complete
+2. **TaskCreate**: "Implement: $ARGUMENTS"
+   - Description: Read plan, install deps, implement code in src/ and tests in tests/
+   - `addBlockedBy`: [task 1]
 
-Wait for the coder to signal "implementation complete" before proceeding.
+3. **TaskCreate**: "Review: $ARGUMENTS"
+   - Description: Review code against plan success criteria, write analysis, verdict
+   - `addBlockedBy`: [task 2]
 
-## Phase 3: Analysis
+4. **TaskCreate**: "Commit: $ARGUMENTS"
+   - Description: Run pre-commit checks, stage files, create conventional commit
+   - `addBlockedBy`: [task 3]
 
-Spawn an **analyst** teammate to:
-- Review code against the plan's success criteria
-- Run `uv run pytest --cov=src` and `uv run ruff check .`
-- Write findings to `docs/analysis/`
-- Update `agents/shared-state/feedback-log.json`
+## Step 2: Spawn all four teammates at once
 
-The analyst will make a verdict: **approved** or **needs_revision**.
+Spawn all four in a single message using the Agent tool with `team_name: "cycle"`:
 
-### If needs_revision (max 2 rounds):
+1. **planner** — `subagent_type: "planner"`, `team_name: "cycle"`, `name: "planner"`
+2. **coder** — `subagent_type: "coder"`, `team_name: "cycle"`, `name: "coder"`
+3. **analyst** — `subagent_type: "analyst"`, `team_name: "cycle"`, `name: "analyst"`
+4. **git-ops** — `subagent_type: "git-ops"`, `team_name: "cycle"`, `name: "git-ops"`
 
-The analyst will message the coder directly with specific fixes and
-create new tasks. Let the coder fix the issues, then have the analyst
-re-review. Cap at 2 revision rounds — if still failing after 2 rounds,
-report the remaining issues to the user and stop.
+Each teammate's spawn prompt should include the task description from
+$ARGUMENTS so they have full context without needing the lead's history.
 
-### If approved:
+## Step 3: Monitor passively
 
-Proceed to Phase 4.
+Do NOT orchestrate. Do NOT read files the teammates are writing.
+Do NOT re-run tests. The teammates self-organize:
 
-## Phase 4: Git commit
+- Each checks TaskList on startup
+- Each claims their unblocked task
+- Blocked teammates wait until dependencies complete
+- Teammates message each other directly (analyst → coder for fixes)
 
-After analyst approval, spawn a **git-ops** teammate to:
-- Run `uv run pytest` and `uv run ruff check .` one final time
-- Stage the changed files (src/, tests/, docs/)
-- Create a conventional commit: `feat(<topic>): <description>`
-- Do NOT push unless the user explicitly asked for it
+**Only intervene if**:
+- A teammate messages you asking for help
+- A teammate has been idle for an extended period with uncompleted tasks
+- You need to nudge a stuck teammate
 
-Wait for git-ops to confirm the commit is done.
+## Step 4: Handle revision rounds
 
-## Your role as team lead
+If the analyst sends a `needs_revision` verdict:
+- The analyst will message the coder directly with fixes
+- The analyst will create new fix tasks
+- Let the coder and analyst coordinate — do not mediate
+- Cap at 2 revision rounds. If still failing, report to user.
 
-- Orchestrate the phases sequentially: plan → code → analyze → commit
-- Monitor each teammate's progress via TaskList
-- If a teammate hits maxTurns without completing, inspect the state
-  and either finish the remaining work yourself or re-dispatch
-- After all phases complete, report to the user:
-  - What was built (files created/modified)
-  - Analyst verdict and key findings
-  - Git commit hash
-  - Any remaining issues or next steps
+## Step 5: Shutdown and cleanup
 
-## Coordination rules
-
-- Each teammate owns its directories — no cross-writing
-- Use the built-in task system (TaskCreate/TaskUpdate) for coordination
-- Teammates message each other via SendMessage for handoffs
-- The team lead monitors and intervenes if stuck
+After git-ops confirms the commit:
+1. Send `{"type": "shutdown_request"}` to all four teammates
+2. Wait for shutdown confirmations
+3. Call `TeamDelete` to clean up team resources
+4. Report to the user:
+   - What was built (files created/modified)
+   - Analyst verdict and key findings
+   - Git commit hash
+   - Any remaining issues or next steps

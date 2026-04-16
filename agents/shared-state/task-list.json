@@ -1,61 +1,6 @@
 {
-  "plan": "docs/plans/2026-04-15-momentum-sector-rotation.md",
-  "dependencies": ["uv add vectorbt yfinance"],
-  "tasks": [
-    {
-      "id": 1,
-      "title": "Create momentum_backtest.py with download_data function",
-      "status": "pending",
-      "details": "Create src/momentum_backtest.py. Implement download_data(tickers: list[str], start: str, end: str) -> pd.DataFrame that calls yf.download(), extracts Close prices, drops columns with all NaN, returns clean DataFrame. Add type hints and Google-style docstrings.",
-      "files": ["src/momentum_backtest.py"],
-      "tests": [],
-      "depends_on": []
-    },
-    {
-      "id": 2,
-      "title": "Implement compute_momentum_signals function",
-      "status": "pending",
-      "details": "Add compute_momentum_signals(prices: pd.DataFrame, lookback_days: int = 252, top_n: int = 3) -> pd.DataFrame to src/momentum_backtest.py. Compute trailing returns via pct_change(lookback_days). On each rebalance date (first trading day of month via ~prices.index.to_period('M').duplicated()), rank sectors descending, pick top N. Return weights DataFrame: 1/top_n for selected, 0 for others, NaN for non-rebalance rows.",
-      "files": ["src/momentum_backtest.py"],
-      "tests": [],
-      "depends_on": [1]
-    },
-    {
-      "id": 3,
-      "title": "Implement run_backtest and compare_results functions",
-      "status": "pending",
-      "details": "Add run_backtest(prices: pd.DataFrame, weights: pd.DataFrame, fees: float = 0.0005) -> vbt.Portfolio using vbt.Portfolio.from_orders(close=prices, size=weights, size_type='targetpercent', group_by=True, cash_sharing=True, call_seq='auto', fees=fees, freq='1D'). Add compare_results(strategy_pf, benchmark_pf) -> dict that extracts sharpe_ratio(), annualized_return(), max_drawdown() from each portfolio and returns a comparison dict.",
-      "files": ["src/momentum_backtest.py"],
-      "tests": [],
-      "depends_on": [1, 2]
-    },
-    {
-      "id": 4,
-      "title": "Implement main() entry point",
-      "status": "pending",
-      "details": "Add main() to src/momentum_backtest.py. Define SECTOR_ETFS = ['XLK','XLF','XLE','XLV','XLI','XLC','XLY','XLP','XLB','XLRE','XLU'] and BENCHMARK = 'QQQM'. Download data from 2018-01-01 to today. Compute momentum signals. Run strategy backtest. Run benchmark via vbt.Portfolio.from_holding(benchmark_prices). Call compare_results and print formatted output. Guard with if __name__ == '__main__': main().",
-      "files": ["src/momentum_backtest.py"],
-      "tests": [],
-      "depends_on": [1, 2, 3]
-    },
-    {
-      "id": 5,
-      "title": "Write tests in tests/test_momentum_backtest.py",
-      "status": "pending",
-      "details": "Create tests/test_momentum_backtest.py. Test compute_momentum_signals with synthetic price data: (a) construct prices where ranking is deterministic, verify top 3 get 1/3 weight and others get 0; (b) verify NaN on non-rebalance days; (c) test tie-breaking when all returns equal; (d) test missing data handling. Mock yf.download to test download_data without network. Do NOT test run_backtest with real market data.",
-      "files": ["tests/test_momentum_backtest.py"],
-      "tests": ["tests/test_momentum_backtest.py"],
-      "depends_on": [1, 2]
-    },
-    {
-      "id": 6,
-      "title": "Integration test: pytest, ruff, and script execution",
-      "status": "pending",
-      "details": "Run uv run pytest -- all tests pass. Run uv run ruff check . -- zero violations. Run uv run ruff format . -- formatted. Run uv run python src/momentum_backtest.py -- verify it prints Sharpe ratio, CAGR, and max drawdown for strategy vs QQQM.",
-      "files": [],
-      "tests": ["tests/test_momentum_backtest.py"],
-      "depends_on": [1, 2, 3, 4, 5]
-    }
-  ],
-  "last_updated": "2026-04-15"
+  "plan": null,
+  "dependencies": [],
+  "tasks": [],
+  "last_updated": null
 }

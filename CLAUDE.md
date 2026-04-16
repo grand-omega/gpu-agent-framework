@@ -46,6 +46,8 @@ uv add --group dev <pkg>                 # add a dev dependency
 ## Agent team architecture
 
 This project uses Claude Code Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`).
+Teammates are self-organizing — they check TaskList, claim work, and
+message each other directly. The team lead monitors passively.
 
 ### Slash commands
 
@@ -65,23 +67,30 @@ This project uses Claude Code Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
 
 Each agent owns its directories — no cross-writing.
 
-### Coordination flow
+### Coordination model
+
+Teammates self-organize via the built-in task system. Sequencing is
+handled by **task dependencies** (blockedBy), not by the lead:
 
 ```
-Planner ──plan──→ Coder ←──fixes──→ Analyst ──approve──→ Git Ops
-   ↑                                    │
-   └──────── feedback-log.json ─────────┘
+[Task: Plan] ──unblocks──→ [Task: Implement] ──unblocks──→ [Task: Review] ──unblocks──→ [Task: Commit]
+   planner                     coder                          analyst                     git-ops
+                                 ↑                               │
+                                 └──── SendMessage (fixes) ──────┘
 ```
 
-The analyst can request up to 2 rounds of revisions from the coder
-before the cycle completes. After analyst approval, git-ops commits.
+- All four teammates are spawned simultaneously
+- Each checks TaskList, waits for their task to unblock, claims it
+- Analyst → coder revision loop via direct SendMessage (max 2 rounds)
+- Lead only intervenes if someone is stuck
 
 ### Task coordination
 
-- Use the **built-in task system** (TaskCreate/TaskUpdate/TaskList) for
-  cross-agent coordination — not hand-rolled JSON files
-- Teammates message each other directly via SendMessage for handoffs
-- `agents/shared-state/feedback-log.json` — analyst → planner feedback loop (persists across cycles)
+- **TeamCreate** at the start of each cycle, **TeamDelete** at the end
+- Use the **built-in task system** (TaskCreate/TaskUpdate/TaskList) — not JSON files
+- Task dependencies auto-unblock when predecessors complete
+- Teammates message each other directly via SendMessage
+- `agents/shared-state/feedback-log.json` — analyst → planner feedback (persists across cycles)
 
 ## Directory layout
 
@@ -91,8 +100,8 @@ tests/                   ← test files (conftest.py has shared fixtures)
 docs/plans/              ← planner agent writes here
 docs/analysis/           ← analyst agent writes here
 docs/reports/            ← LaTeX reports
-agents/shared-state/     ← task-list.json, feedback-log.json
-.claude/agents/          ← subagent role definitions
+agents/shared-state/     ← feedback-log.json (persists across cycles)
+.claude/agents/          ← teammate role definitions
 .claude/commands/        ← slash command definitions (cycle, research)
 .claude/hooks/           ← auto-format (ruff) + uv reminder hooks
 ```
